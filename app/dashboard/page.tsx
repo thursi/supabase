@@ -138,9 +138,12 @@ const Dashboard: React.FC = () => {
     { id: 'integrations', label: 'Integrations', icon: Layers },
     { id: 'settings', label: 'Project Settings', icon: Settings },
   ];
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
 
   const handleDelete = async (id: number) => {
     const supabase = createClient();
@@ -155,46 +158,97 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchStudents = async () => {
-      const supabase = await createClient();
+  // useEffect(() => {
+  //   const fetchStudents = async () => {
+  //     const supabase = await createClient();
 
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('students')
-          .select('*')
-          .order('id', { ascending: false });
+  //     try {
+  //       setLoading(true);
+  //       const { data, error } = await supabase
+  //         .from('students')
+  //         .select('*')
+  //         .order('id', { ascending: false });
 
-        if (error) {
-          throw error;
-        }
+  //       if (error) {
+  //         throw error;
+  //       }
 
-        // Transform the data to match your component's expected format
-        const transformedStudents =
-          data?.map((student: Student) => ({
-            id: student.id,
-            first_name: student.first_name,
-            last_name: student.last_name,
-            email: student.email,
-            phone: student.phone,
-            date_of_birth: student.date_of_birth,
-            address: student.address,
-            city: student.city,
-          })) || [];
+  //       // Transform the data to match your component's expected format
+  //       const transformedStudents =
+  //         data?.map((student: Student) => ({
+  //           id: student.id,
+  //           first_name: student.first_name,
+  //           last_name: student.last_name,
+  //           email: student.email,
+  //           phone: student.phone,
+  //           date_of_birth: student.date_of_birth,
+  //           address: student.address,
+  //           city: student.city,
+  //         })) || [];
 
-        setStudentsData(transformedStudents);
-      } catch (err) {
-        // setError(err.message);
-        console.error('Error fetching students:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  //       setStudentsData(transformedStudents);
+  //     } catch (err) {
+  //       // setError(err.message);
+  //       console.error('Error fetching students:', err);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchStudents();
-  }, []);
+  //   fetchStudents();
+  // }, []);
+
   // Close menu when clicking outside
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetchStudents();
+    }, 300); // wait for typing to finish
+
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
+  
+  const fetchStudents = async () => {
+    const supabase = createClient();
+    setLoading(true);
+
+    try {
+      let query = supabase
+        .from('students')
+        .select('*')
+        .order('id', { ascending: false });
+
+      if (searchTerm.trim()) {
+        // Use ilike for case-insensitive matching
+        query = query.or(
+          `first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`
+        );
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const transformedStudents =
+        data?.map((student: Student) => ({
+          id: student.id,
+          first_name: student.first_name,
+          last_name: student.last_name,
+          email: student.email,
+          phone: student.phone,
+          date_of_birth: student.date_of_birth,
+          address: student.address,
+          city: student.city,
+        })) || [];
+
+      setStudentsData(transformedStudents);
+    } catch (err) {
+      console.error('Error fetching students:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -663,7 +717,6 @@ const Dashboard: React.FC = () => {
         </button>
       </div>
 
-     
       <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
         <div className="max-h-96 overflow-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
           <table className="w-full">
@@ -930,9 +983,16 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="flex items-center space-x-4">
               <div className="relative">
+                {/* <input
+                  type="text"
+                  placeholder="Quick search..."
+                  className="w-64 pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                /> */}
                 <input
                   type="text"
                   placeholder="Quick search..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
                   className="w-64 pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
                 />
                 <Search
